@@ -1,0 +1,68 @@
+package usecase
+
+import (
+	"context"
+	"testing"
+
+	"github.com/golang/mock/gomock"
+	"github.com/quantum-box/skillforest_platform/go/services/test/domain/entity/paper"
+	"github.com/quantum-box/skillforest_platform/go/services/test/domain/entity/source"
+	"github.com/quantum-box/skillforest_platform/go/services/test/domain/entity/tester"
+	"github.com/quantum-box/skillforest_platform/go/services/test/domain/repository"
+	"github.com/quantum-box/skillforest_platform/go/services/test/domain/repository/mock_repository"
+)
+
+func TestFinishTestInteractor_Execute(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockPaperRepo := mock_repository.NewMockPaperRepository(ctrl)
+	ctx := context.Background()
+	type fields struct {
+		paperRepo repository.PaperRepository
+	}
+	type args struct {
+		ctx context.Context
+		pi  paper.PaperID
+	}
+	tests := []struct {
+		name     string
+		fields   fields
+		args     args
+		mockInit func()
+		wantErr  bool
+	}{
+		{
+			name: "test",
+			fields: fields{
+				paperRepo: mockPaperRepo,
+			},
+			args: args{
+				ctx: ctx,
+				pi:  paper.PaperID(""),
+			},
+			mockInit: func() {
+				tid := tester.TesterID("")
+				mockPaperRepo.EXPECT().GetById(ctx, gomock.Any()).
+					Return(&paper.Paper{
+						ID:       paper.PaperID(""),
+						TesterId: &tid,
+						SourceId: source.SourceID(""),
+						QuizList: []*paper.Quiz{{}, {}},
+						Result:   &paper.Result{},
+					}, nil)
+				mockPaperRepo.EXPECT().Update(ctx, gomock.Any()).Return(nil)
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.mockInit()
+			fi := &FinishTestInteractor{
+				paperRepo: tt.fields.paperRepo,
+			}
+			if err := fi.Execute(tt.args.ctx, tt.args.pi); (err != nil) != tt.wantErr {
+				t.Errorf("FinishTestInteractor.Execute() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
